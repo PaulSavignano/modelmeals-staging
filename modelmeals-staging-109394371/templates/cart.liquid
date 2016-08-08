@@ -1,8 +1,11 @@
+<!--============================================================================
+  Developer: Paul Savignano
+  Email: paul.savignano@gmail.com
+  Mobile: (619) 865-3725
+==============================================================================-->
+
+
 <style>
-.delivery-date {
-  float: left;
-  font-weight: 700;
-}
 .js-qty {
   display: none;
 }
@@ -21,7 +24,7 @@
 
 
 {% if cart.item_count > 0 %}
-<div class="wrapper page-margin">
+<div class="wrapper page-margin" id="cart-body">
   {% include "modelmeals-flash-messages" %}
   <form action="/cart" method="post" novalidate class="cart" id="cart-form">
     <h3>{{ 'cart.general.title' | t }}</h3>
@@ -94,7 +97,7 @@
                   {% if property_size > 0 %}
                     {% for p in item.properties %}
                       {% unless p.last == blank %}
-                        {{ p.first }}:
+                        <div>{{ p.first }}:
 
                         {% comment %}
                           Check if there was an uploaded file associated
@@ -102,10 +105,9 @@
                         {% if p.last contains '/uploads/' %}
                           <a href="{{ p.last }}">{{ p.last | split: '/' | last }}</a>
                         {% else %}
-                          {{ p.last }}
+                          {{ p.last }}</div>
                         {% endif %}
 
-                        <br>
                       {% endunless %}
                     {% endfor %}
                   {% endif %}
@@ -145,6 +147,7 @@
                         min="0"
                         data-id="{{ item.id }}"
                         data-submit="true"
+                        data-line="{{ forloop.index }}"
                         class="form-control input-number text-center ajaxcart--hide"
                         {% unless item.variant.inventory_management == blank or item.variant.inventory_policy == 'continue' %}
                           max="{{ item.variant.inventory_quantity }}"
@@ -233,6 +236,12 @@
   </div>
 {% endif %}
 
+<div class="wrapper page-margin text-center hidden" id="cart-empty">
+  <h3 class="uppercase h3">{{ 'cart.general.title' | t }}</h3>
+  <p>{{ 'cart.general.empty' | t }}</p>
+  <a href="/pages/order" class="btn btn--large">{{ 'cart.general.continue_browsing_html' | t }}</a>
+</div>
+
 
 
 {% include "modelmeals-modal" %}
@@ -252,6 +261,13 @@ function displayCartUpdate(response, input) {
   var priceEl = input.parentNode.parentNode.parentNode.children[2].children[1];
   var items = response.items;
 
+  if (response.item_count === 0) {
+    document.getElementById('cart-body').classList.add('hidden');
+    document.getElementById('cart-empty').classList.remove('hidden');
+    document.querySelectorAll('.cartCost')[0].classList.add('hidden');
+
+  }
+
   if (input.value == '') {
     var row = input.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
     row.remove();
@@ -266,6 +282,10 @@ function displayCartUpdate(response, input) {
   }
   totalEl.innerHTML = totalCost;
   cartCostEl.innerHTML = totalCost;
+  for (var z = 0; z < items.length; z++) {
+    var lines = document.querySelectorAll('[data-line]');
+    lines[z].dataset.line = z + 1;
+  }
 }
 
 function deliveryNotes(response, input) {
@@ -333,11 +353,10 @@ Shopify.updateCartFromForm = function(input, form, callback) {
 };
 
 Shopify.removeItem = function(input, callback) {
-  var variant_id = input.dataset.id;
   var params = {
     type: 'POST',
     url: '/cart/change.js',
-    data:  'quantity=0&id='+variant_id,
+    data:  'quantity=0&line='+input.dataset.line,
     dataType: 'json',
     success: function(response) {
       if ((typeof callback) === 'function') {

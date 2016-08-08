@@ -1,7 +1,12 @@
+<!--============================================================================
+  Developer: Paul Savignano
+  Email: paul.savignano@gmail.com
+  Mobile: (619) 865-3725
+==============================================================================-->
+
+
 <!-- Check if order page or order-packages page -->
-
-
-<div class="wrapper page-margin hidden" id="order-form-wrapper">
+<div class="wrapper page-margin" id="order-form-wrapper">
   {% include "modelmeals-flash-messages" %}
   <div class="cart__body">
     {% for myHandle in myArray %}
@@ -10,12 +15,12 @@
 
         <div class="cart__row medium-down cart__header-labels {% if forloop.first == true %}{% else %}order-header{% endif %}">
           <div class="grid--full">
-            <div class="grid__item large--one-half">
+            <div class="grid__item large--two-thirds">
               <div class="grid--full">
                 <h3>{{ collection.title }}</h3>
               </div>
             </div>
-            <div class="grid__item large--one-half">
+            <div class="grid__item large--one-third">
               <div class="grid--full">
                 <div class="grid__item one-half medium-down--hide price">
                   Price
@@ -36,9 +41,9 @@
                   <div class="grid--full cart__row--table-large">
 
 
-                      <div class="grid__item large--one-half">
+                      <div class="grid__item large--two-thirds">
                         <div class="grid--full cart__row--table-large">
-                          <div class="grid__item one-quarter">
+                          <div class="grid__item one-fifth">
                             <a
                               href="#"
                               class="modal-img"
@@ -49,7 +54,7 @@
                               <img src="{{ product.featured_image.src | product_img_url: 'small' }}" alt="{{ product.featured_image.alt | escape }}"/>
                             </a>
                           </div>
-                          <div class="grid__item three-quarters cart__item__title">
+                          <div class="grid__item four-fifths cart__item__title">
                             <a
                               href="#"
                               class="h4--body modal-description"
@@ -66,30 +71,18 @@
                                 - {{ variant.sku }}
                               {% endunless %}
                             </a>
+                            <input type="text" id="{{ variant.id }}delivery" class="delivery-date hidden" name="properties[Delivery]" value="d">
                           </div>
                         </div>
                       </div>
 
 
-                    <div class="grid__item large--one-half">
+                    <div class="grid__item large--one-third">
                       <div class="grid--full cart__row--table-large">
 
                         <div class="grid__item one-half text-left">
                           <span class="cart__mini-labels">{{ 'cart.label.price' | t }}</span>
                           <span class="h3--body money" id="price{{ variant.id }}">{{ variant.price | money }}</span>
-                          {% if variant.metafields.subscriptions.discount_variant_id %}
-                            <span class="subscribe-btn">
-                              <button
-                                type="button"
-                                class="btn btn-default subscribe"
-                                data-product="{{ product.id }}"
-                                data-variant="{{ variant.id }}"
-                                data-subscriptionvariant="{{ variant.metafields.subscriptions.discount_variant_id }}"
-                                data-regularprice="{{ variant.price }}"
-                                data-subscriptionprice="{{ variant.metafields.subscriptions.discount_variant_price }}"
-                              >Subscribe</button>
-                            </span>
-                          {% endif %}
                         </div>
 
                         <div class="grid__item one-half text-right">
@@ -111,6 +104,7 @@
                               data-product="{{ product.title }}"
                               data-price="{{ variant.price }}"
                               data-id="{{ variant.id }}"
+                              data-delivery=""
                               data-subscribeid="{{ variant.metafields.subscriptions.discount_variant_id }}"
                               min = "0"
                               {% unless variant.inventory_management == blank or variant.inventory_policy == 'continue' %}
@@ -166,7 +160,113 @@
 
 
 
-
 {% include "modelmeals-modal" %}
 {{ 'modelmeals-input-buttons.js' | asset_url | script_tag }}
-{{ 'modelmeals-order-form.js' | asset_url | script_tag }}
+
+
+
+
+
+
+<script>
+// Get currency
+function getCurrency(x) {
+  return '$ ' + x.toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+//  Get order total
+function getCartTotal() {
+  var priceInputs = document.querySelectorAll('.input-number')
+  var total = 0;
+  for (var i = 0; i < priceInputs.length; i++) {
+    var quantity = parseInt(priceInputs[i].value.replace(/\D/g, ''), 10)
+    if (quantity > 0) {
+      var price = priceInputs[i].dataset.price / 100;
+      lineTotal =  quantity * price;
+      total += lineTotal;
+    }
+  }
+  var orderPrice = getCurrency(total);;
+  if (total > 0) {
+    document.getElementById('add-to-cart-order-form').value = 'ADD TO CART  |  ' + orderPrice;
+  } else {
+    document.getElementById('add-to-cart-order-form').value = 'ADD TO CART';
+  }
+}
+
+
+// Listen for click on inputs
+var inputButtons = document.querySelectorAll('.btn-number');
+for (var i = 0; i < inputButtons.length; i++) {
+  inputButtons[i].addEventListener('click', getCartTotal, false);
+  inputButtons[i].parentNode.parentNode.children[1].addEventListener('keyup', getCartTotal, false);
+}
+/* Get Total Order Cost */
+
+
+// Add to cart
+Shopify.itemsToAdd = [];
+Shopify.addItemstoTheCart = function() {
+  if (Shopify.itemsToAdd.length) {
+    var item = Shopify.itemsToAdd.pop();
+    $.ajax({
+      url: '/cart/add',
+      dataType: 'json',
+      type: 'post',
+      data: item,
+      success: Shopify.addItemstoTheCart,
+      error: Shopify.addItemstoTheCart
+    });
+  } else {
+    window.location.href = '/cart';
+  }
+}
+
+jQuery(function($) {
+  $('table .quantity:first').focus();
+  $('[max]').change(function() {
+    var max = parseInt($(this).attr('max'), 10);
+    var value = parseInt($(this).val(), 10) || 0;
+    if (value > max) {
+      alert('We only have ' + max + ' of this item in stock');
+      $(this).val(max);
+    }
+  });
+
+  // Add products with quantity to array
+  $('.add-to-cart-order-form').click(function() {
+    Shopify.itemsToAdd = [];
+    $('.input-number').each(function() {
+      var subscription = this.dataset.subscription;
+      var quantity = parseInt(this.value.replace(/\D/g, ''));
+      var variantId = this.dataset.id;
+      var subscribeVariantId = this.dataset.subscribeid;
+      var deliveryDate = this.dataset.delivery;
+      if (quantity) {
+        if (subscribeVariantId) {
+          Shopify.itemsToAdd.push({
+            'id': subscribeVariantId,
+            'quantity': quantity,
+            'properties[delivery]': deliveryDate,
+            'properties[shipping_interval_frequency]': "1",
+            'properties[shipping_interval_unit_type]': "Weeks",
+            'properties[subscription_id]': "14788"
+          });
+        } else {
+          Shopify.itemsToAdd.push({
+            'id': variantId,
+            'quantity': quantity,
+            'properties[delivery]': deliveryDate,
+          });
+        }
+      }
+    });
+    if (Shopify.itemsToAdd.length) {
+      Shopify.addItemstoTheCart();
+    }
+    else {
+      alert('All quantities are set to zero.');
+      $('.add-to-cart-order-form').removeAttr('disabled').removeClass('disabled');
+    }
+  });
+});
+</script>

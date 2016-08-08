@@ -1,3 +1,10 @@
+/*============================================================================
+  Developer: Paul Savignano
+  Email: paul.savignano@gmail.com
+  Mobile: (619) 865-3725
+==============================================================================*/
+
+
 /* Plus and minus button events */
 function onClick(event) {
   $(".alert").alert()
@@ -23,7 +30,6 @@ function onClick(event) {
         $("#flash-message").html('We only have ' + max + ' of this item in stock.');
         $("#flash-message").fadeIn();
         closeFlashMessage();
-        alert('We only have ' + max + ' of this item in stock.');
       }
     } else {
       qty = qty + 1;
@@ -52,7 +58,6 @@ function onKeyup(event) {
     $("#flash-message").html('We only have ' + max + ' of this item in stock.');
     $("#flash-message").fadeIn();
     closeFlashMessage();
-    alert('We only have ' + max + ' of this item in stock');
   }
 
   if (input === 0) {
